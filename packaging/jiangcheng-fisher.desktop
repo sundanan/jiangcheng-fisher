@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=江城钓客
+Name[en]=Jiangcheng Fisher
+GenericName=3D 钓鱼模拟
+Comment=武汉江湖 3D 垂钓模拟 · 台钓 / 路亚 · 57 种鱼
+Comment[en]=Wuhan rivers & lakes 3D fishing simulator
+Exec=/opt/jiangcheng-fisher/launch.sh
+Icon=jiangcheng-fisher
+Terminal=false
+Categories=Game;SportsGame;
+StartupNotify=true

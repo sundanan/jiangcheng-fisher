@@ -1,0 +1,14 @@
+Package: jiangcheng-fisher
+Version: 1.0.0
+Architecture: all
+Maintainer: Jiangcheng Fisher <fisher@jiangcheng.local>
+Installed-Size: 3400
+Depends: python3, curl, xdg-utils | www-browser
+Section: games
+Priority: optional
+Homepage: https://github.com/
+Description: 江城钓客 · 武汉江湖 3D 垂钓模拟 (Jiangcheng Fisher)
+ 3D fishing simulator based on real Wuhan waters (Yangtze, Han River,
+ Liangzi/Donghu/Tangxun/Houguan lakes). Float & lure fishing,
+ 57 real fish species with photo cards, boat fishing, real-time
+ weather & seasons. Runs locally in browser via python3 http.server.

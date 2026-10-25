@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>convert</title></head>
+<body style="font-family:sans-serif">
+<div id="log">starting...</div>
+<canvas id="cv" width="520" height="390" style="display:none"></canvas>
+<script>
+(async () => {
+  const log = (m) => { document.getElementById('log').textContent = m; };
+  const src = await fetch('/src/fishData.js?v=8').then(r => r.text());
+  const ids = [...src.matchAll(/id:\s*'([a-z]+)'/g)].map(m => m[1]);
+  const seen = new Set(); const list = ids.filter(id => !seen.has(id) && seen.add(id));
+  log('fish: ' + list.length);
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  let done = 0, failed = [];
+  for (const id of list) {
+    try {
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im); im.onerror = () => rej(new Error('load ' + id));
+        im.src = '/lib/photos/' + id + '.jpg?c=' + Date.now();
+      });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      const scale = Math.min(cv.width / img.width, cv.height / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+      const data = cv.toDataURL('image/jpeg', 0.85);
+      const r = await fetch('/api/save', { method: 'POST', body: JSON.stringify({ name: id, data }) });
+      if (!r.ok) throw new Error('save ' + id);
+      done++;
+      log('converted ' + done + '/' + list.length + ' (' + id + ')');
+    } catch (e) { failed.push(id + ':' + e.message); log('FAIL ' + id); }
+  }
+  window.__convert = { done, total: list.length, failed };
+  log('ALL DONE ' + done + '/' + list.length + (failed.length ? ' failed: ' + failed.join(',') : ''));
+})();
+</script>
+</body>
+</html>

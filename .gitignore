@@ -1,0 +1,12 @@
+# build artifacts
+dist/
+_docx_build/
+lib/photos_jpg/
+lib/candidates/
+*.log
+*.deb
+*.tar.gz
+
+# runtime
+node_modules/
+.DS_Store
