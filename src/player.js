@@ -1,9 +1,12 @@
 // 玩家：第一人称行走 + 视角 + 双竿外观（台钓竿：长细无轮；路亚竿：短粗带纺车轮）+ 船钓
 import * as THREE from '../lib/three.module.js';
 import { clamp } from './util.js?v=16';
+import { createAngler, createHandModel } from './angler.js?v=18';
 
 const EYE = 1.62;
 const DONGHU = { x: 63, z: 25 }; // 东湖中心（出生在其岸线）
+const _rightGrip = new THREE.Vector3(), _leftGrip = new THREE.Vector3();
+const _camOrigin = new THREE.Vector3(), _camDesired = new THREE.Vector3();
 
 export class Player {
   constructor(camera, terrain) {
@@ -18,7 +21,14 @@ export class Player {
     this.bend = 0;
     this.rodPitch = 0.61;              // 竿角（弧度）：3/4/5 三档
     this.onBoat = false;
+    this.underwater = false;
     this._bendTarget = { k: 0, side: 0 };
+    this.fishingPhase = 'idle';
+    this.reeling = false;
+    this.action = null;
+    this.actionT = 0;
+    this.reelT = 0;
+    this._actionPose = { x: 0, z: 0, lean: 0, roll: 0 };
     // 面向深水方向
     const d = new THREE.Vector3(shore.tx - this.pos.x, 0, shore.tz - this.pos.z).normalize();
     this.yaw = Math.atan2(-d.x, -d.z);
@@ -53,6 +63,13 @@ export class Player {
       side.position.set(sx, 0.42, 0);
       g.add(side);
     }
+    // 钓鱼座：座面 1.0m，配合髋膝弯曲使靴底落在船内地板
+    const seatPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.5, 6), woodDark);
+    seatPost.position.set(0, 0.65, 0.12);
+    g.add(seatPost);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.12, 0.58), wood);
+    seat.position.set(0, 0.94, 0.12);
+    g.add(seat);
     // 船桨
     const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.2, 5), woodDark);
     oar.rotation.set(0.5, 0, 0.35);
@@ -65,27 +82,17 @@ export class Player {
   attachBoat(scene) { this.terrainScene = scene; scene.add(this.boat); }
   _hand() {
     const g = new THREE.Group();
-    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x3a4a5c, roughness: 0.95, flatShading: true });
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.062, 0.38, 7), sleeveMat);
-    sleeve.rotation.set(0.55, 0, -0.5);
-    sleeve.position.set(0.10, -0.115, 0.17);
+    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x51708f, roughness: 0.95, flatShading: true });
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.28, 8), sleeveMat);
+    sleeve.rotation.set(0.65, 0, -0.35);
+    sleeve.position.set(0.08, -0.10, 0.18);
     g.add(sleeve);
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xd8a077, roughness: 0.8, flatShading: true });
-    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), skinMat);
-    palm.scale.set(0.9, 1, 1.2);
-    palm.position.set(0.008, -0.028, -0.01);
-    g.add(palm);
-    for (let i = 0; i < 3; i++) {
-      const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.034, 3, 5), skinMat);
-      finger.rotation.set(0.3, 0, 1.35);
-      finger.position.set(-0.02 - i * 0.004, -0.024 + i * 0.014, -0.014 + i * 0.03);
-      g.add(finger);
-    }
-    const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.01, 0.036, 3, 5), skinMat);
-    thumb.rotation.set(0.2, 0, 0.9);
-    thumb.position.set(0.03, -0.02, 0.036);
-    g.add(thumb);
-    g.position.set(0, -0.06, 0.06);
+    const hand = createHandModel('right', skinMat);
+    hand.rotation.x = 0.65;
+    hand.position.set(0, -0.015, -0.02);
+    g.add(hand);
+    g.position.set(0, -0.035, 0.025);
     return g;
   }
   // style: 'float' 台钓竿（长细、无轮、绕线板）/ 'lure' 路亚竿（短粗、纺车轮）
@@ -152,118 +159,40 @@ export class Player {
       knob.position.set(0.045, -0.125, 0.065);
       root.add(knob);
     }
-    root.add(this._hand());
+    const fpHand = this._hand();
+    root.add(fpHand);
+    const rightGrip = new THREE.Object3D();
+    rightGrip.name = 'rightGrip';
+    rightGrip.position.set(0, -0.035, 0.025);
+    root.add(rightGrip);
+    const leftGrip = new THREE.Object3D();
+    leftGrip.name = 'leftGrip';
+    leftGrip.position.set(0, 0, isFloat ? -0.28 : -0.24);
+    root.add(leftGrip);
     // 第一人称时竿挂相机上的偏移；第三人称时挂到人物身上的偏移
     root.position.set(isFloat ? 0.26 : 0.30, isFloat ? -0.27 : -0.30, isFloat ? -0.55 : -0.52);
-    return { root, segs, tip, fpOffset: root.position.clone() };
+    return { root, segs, tip, fpHand, rightGrip, leftGrip, fpOffset: root.position.clone(), fpRotation: root.rotation.clone() };
   }
   setRodStyle(style) {
     this.rodStyle = style === 'lure' ? 'lure' : 'float';
-    this.rig.float.root.visible = this.rodStyle === 'float';
-    this.rig.lure.root.visible = this.rodStyle === 'lure';
+    this._syncRigVisibility();
     if (this.view && this.body) this.setView(this.view); // 构造期跳过，稍后由 setView 统一挂载
   }
-  // 构建 third-person 职业钓手形象（面向 -Z）：防晒服+马甲+偏光镜+背后抄网+腰包
+  _syncRigVisibility() {
+    for (const style of ['float', 'lure']) {
+      const rig = this.rig[style];
+      rig.root.visible = !this.underwater && this.rodStyle === style;
+      rig.fpHand.visible = !this.underwater && this.rodStyle === style && this.view !== 'third';
+    }
+  }
+  setUnderwater(active) {
+    this.underwater = !!active;
+    this._syncRigVisibility();
+  }
+  // 第三人称人物由独立米制模型构建，保持脚底原点与面向 -Z 的场景约定
   _buildBody() {
-    const g = new THREE.Group();
-    const jacket = new THREE.MeshStandardMaterial({ color: 0x51708f, roughness: 0.95, flatShading: true });   // 蓝灰防晒服
-    const vest = new THREE.MeshStandardMaterial({ color: 0x33506b, roughness: 0.95, flatShading: true });     // 深色钓鱼马甲
-    const pants = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.95, flatShading: true });
-    const boot = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 1, flatShading: true });
-    const skin = new THREE.MeshStandardMaterial({ color: 0xd8a077, roughness: 0.8, flatShading: true });
-    const hat = new THREE.MeshStandardMaterial({ color: 0x35502e, roughness: 1, flatShading: true });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x1c2024, roughness: 0.6, flatShading: true });
-    const stripe = new THREE.MeshStandardMaterial({ color: 0xd8d8c8, roughness: 0.9, flatShading: true });    // 反光条
-    // 两段式肢体：从 from 到 to 的圆柱
-    const limb = (from, to, r, mat) => {
-      const dir = new THREE.Vector3().subVectors(to, from);
-      const len = Math.max(0.02, dir.length());
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.85, len, 6), mat);
-      m.position.copy(from).addScaledVector(dir, 0.5);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-      g.add(m);
-      return m;
-    };
-    // 腿（带髋关节组，行走摆动用）
-    this._legs = [];
-    for (const sx of [-0.12, 0.12]) {
-      const hip = new THREE.Group();
-      hip.position.set(sx, 0.74, 0);
-      const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.4, 0.165), pants);
-      thigh.position.y = -0.2;
-      hip.add(thigh);
-      const shin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.15), pants);
-      shin.position.y = -0.55;
-      hip.add(shin);
-      const bootM = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.12, 0.27), boot);
-      bootM.position.set(0, -0.76, -0.05);
-      hip.add(bootM);
-      g.add(hip);
-      this._legs.push(hip);
-    }
-    // 躯干：防晒服 + 马甲 + 口袋 + 反光条
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.58, 0.28), jacket);
-    torso.position.y = 1.03;
-    g.add(torso);
-    const vestM = new THREE.Mesh(new THREE.BoxGeometry(0.49, 0.46, 0.31), vest);
-    vestM.position.y = 1.08;
-    g.add(vestM);
-    for (const px of [-0.13, 0.13]) {  // 马甲口袋
-      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.02), vest);
-      pocket.position.set(px, 1.05, -0.17);
-      g.add(pocket);
-    }
-    const zip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.44, 0.015), dark);
-    zip.position.set(0, 1.08, -0.165);
-    g.add(zip);
-    const reflect = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.03, 0.315), stripe); // 背部反光条
-    reflect.position.y = 1.24;
-    g.add(reflect);
-    // 头：脖子 + 头 + 棒球帽 + 偏光镜
-    limb(new THREE.Vector3(0, 1.3, 0), new THREE.Vector3(0, 1.42, 0), 0.055, skin);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.145, 8, 7), skin);
-    head.position.y = 1.52;
-    g.add(head);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.165, 0.1, 8), hat);
-    cap.position.y = 1.645;
-    g.add(cap);
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.022, 0.2), hat);
-    brim.position.set(0, 1.61, -0.2);
-    g.add(brim);
-    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.05, 0.03), dark); // 偏光钓鱼镜
-    glasses.position.set(0, 1.54, -0.115);
-    g.add(glasses);
-    // 双臂两段式（后手握竿把，前手扶竿身）
-    const rs = new THREE.Vector3(0.28, 1.3, 0.02), re = new THREE.Vector3(0.24, 1.06, -0.2), rh = new THREE.Vector3(0.2, 1.12, -0.42);
-    limb(rs, re, 0.055, jacket);
-    limb(re, rh, 0.048, jacket);
-    const rHand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), skin);
-    rHand.position.copy(rh);
-    g.add(rHand);
-    const ls = new THREE.Vector3(-0.28, 1.3, 0.02), le = new THREE.Vector3(-0.16, 1.12, -0.3), lh = new THREE.Vector3(0.1, 1.24, -0.56);
-    limb(ls, le, 0.055, jacket);
-    limb(le, lh, 0.048, jacket);
-    const lHand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), skin);
-    lHand.position.copy(lh);
-    g.add(lHand);
-    // 背后抄网（手柄斜背 + 网圈 + 网兜）
-    const nb0 = new THREE.Vector3(-0.22, 1.38, 0.2), nb1 = new THREE.Vector3(0.2, 0.78, 0.26);
-    limb(nb0, nb1, 0.022, boot);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 5, 10), new THREE.MeshStandardMaterial({ color: 0x8a8a85, roughness: 0.7, metalness: 0.3 }));
-    rim.position.copy(nb1);
-    rim.rotation.x = 0.4;
-    rim.rotation.z = -0.5;
-    g.add(rim);
-    const pouch = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.34, 8), new THREE.MeshStandardMaterial({ color: 0x3d4a42, roughness: 1, flatShading: true }));
-    pouch.position.set(nb1.x + 0.06, nb1.y - 0.22, nb1.z + 0.04);
-    pouch.rotation.z = -0.4;
-    g.add(pouch);
-    // 腰间鱼护包
-    const bag = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.13), vest);
-    bag.position.set(-0.3, 0.86, 0.02);
-    bag.rotation.z = 0.12;
-    g.add(bag);
-    return g;
+    this.angler = createAngler();
+    return this.angler.group;
   }
   // 视角切换：first = 竿挂相机；third = 竿挂人物、相机背后环绕
   setView(v) {
@@ -273,15 +202,57 @@ export class Player {
       this.body.visible = false;
       this.cam.add(rig.root);
       rig.root.position.copy(rig.fpOffset);
+      rig.root.rotation.copy(rig.fpRotation);
     } else {
       this.body.visible = true;
       this.body.add(rig.root);
-      rig.root.position.set(0.24, 1.18, -0.5);
+      rig.root.position.set(0.16, 1.12, -0.14);
     }
+    this._syncRigVisibility();
+  }
+  _poseHands() {
+    const rig = this.rig[this.rodStyle];
+    this.body.updateMatrixWorld(true);
+    rig.rightGrip.getWorldPosition(_rightGrip);
+    rig.leftGrip.getWorldPosition(_leftGrip);
+    this.body.worldToLocal(_rightGrip);
+    this.body.worldToLocal(_leftGrip);
+    this.angler.poseGrip(_rightGrip, _leftGrip);
   }
   rodTipWorld(out) { return this.rig[this.rodStyle].tip.getWorldPosition(out); }
   // k: 0~1 弯曲强度；side: -1~1 鱼在左右侧的偏移（竿尖指向鱼）
   setBend(k, side = 0) { this._bendTarget = { k, side }; }
+  setFishingState(phase, reeling) {
+    this.fishingPhase = phase;
+    this.reeling = !!reeling;
+  }
+  triggerAction(name) {
+    this.action = name || null;
+    this.actionT = 0;
+  }
+  _updateAction(dt) {
+    const p = this._actionPose;
+    p.x = 0; p.z = 0; p.lean = 0; p.roll = 0;
+    if (this.reeling) {
+      this.reelT += dt * 12;
+      p.z += Math.sin(this.reelT) * 0.018;
+      p.x += Math.sin(this.reelT * 0.5) * 0.012;
+    }
+    if (!this.action) return p;
+    const durations = { cast: 0.65, strike: 0.32, land: 0.75 };
+    this.actionT += dt;
+    const progress = Math.min(1, this.actionT / (durations[this.action] || 0.5));
+    const s = Math.sin(progress * Math.PI);
+    if (this.action === 'cast') {
+      p.x += 0.48 * s; p.z -= 0.18 * s; p.lean = -0.07 * s; p.roll = 0.04 * s;
+    } else if (this.action === 'strike') {
+      p.x += 0.58 * s; p.lean = -0.10 * s;
+    } else if (this.action === 'land') {
+      p.x -= 0.28 * s; p.lean = -0.18 * s;
+    }
+    if (progress >= 1) this.action = null;
+    return p;
+  }
   _applyBend(dt) {
     const rig = this.rig[this.rodStyle];
     const t = this._bendTarget;
@@ -350,30 +321,37 @@ export class Player {
       }
     }
     this.walkT += dt * (moving ? (this.onBoat ? 3 : (input.isDown('ShiftLeft') ? 11 : 7.5)) : 1.5);
+    const running = input.isDown('ShiftLeft') || input.isDown('ShiftRight');
     const bob = moving ? Math.sin(this.walkT) * (this.onBoat ? 0.05 : 0.035) : Math.sin(this.walkT) * 0.008;
-    const eye = EYE + (this.onBoat ? 0.35 : 0);
+    const eye = EYE + (this.onBoat ? 0.10 : 0);
     this.cam.position.set(this.pos.x, this.pos.y + eye + bob, this.pos.z);
     this.cam.rotation.set(this.pitch, this.yaw, Math.sin(this.walkT * 0.5) * (moving ? 0.008 : 0.002), 'YXZ');
-    // 人物模型同步（第三人称可见）+ 行走摆腿/摆臂
-    this.body.position.set(this.pos.x, this.pos.y + (this.onBoat ? 0.42 : 0), this.pos.z);
+    // 人物模型同步（第三人称可见）+ 髋膝联动与持竿姿态
+    const actionPose = this._updateAction(dt);
+    const boatY = this.onBoat ? 0.02 + Math.sin(this.walkT) * 0.04 : 0;
+    this.body.position.set(this.pos.x, this.pos.y + (this.onBoat ? 0.174 + boatY : 0), this.pos.z);
     this.body.rotation.y = this.yaw;
-    if (this._legs && this.view === 'third') {
-      const swing = moving && !this.onBoat ? Math.sin(this.walkT) * 0.5 : 0;
-      this._legs[0].rotation.x = swing;
-      this._legs[1].rotation.x = -swing;
-    }
+    this.body.rotation.x = actionPose.lean;
+    this.body.rotation.z = actionPose.roll;
+    this.angler.setWalk(this.walkT, moving, running, this.onBoat);
     // 船体跟随
     if (this.onBoat) {
-      this.boat.position.set(this.pos.x, 0.02 + Math.sin(this.walkT) * 0.04, this.pos.z);
+      this.boat.position.set(this.pos.x, boatY, this.pos.z);
       this.boat.rotation.y = this.yaw;
       this.pos.y = 0;
     } else {
       this.pos.y = this.terrain.heightAt(this.pos.x, this.pos.z);
     }
-    // 竿基础仰角（固定三档）+ 弯曲弧线平滑
-    const base = this.rig[this.rodStyle].root;
-    base.rotation.x = -(0.12 + this.rodPitch * 0.5);
+    // 竿基础仰角（固定三档）+ 弯曲弧线平滑；第三人称按双手握持锚定
+    const rig = this.rig[this.rodStyle];
+    const base = rig.root;
+    if (this.view === 'third') {
+      base.rotation.set(0.18 + this.rodPitch * 0.55 + actionPose.x, 0, 0.03 + actionPose.z);
+    } else {
+      base.rotation.set(-(0.12 + this.rodPitch * 0.5) + actionPose.x, rig.fpRotation.y, rig.fpRotation.z + actionPose.z);
+    }
     this._applyBend(dt);
+    if (this.view === 'third') this._poseHands();
     // 第三人称：WoW 式机位——角色完整出镜居画面下沿，视线越过角色看向前方
     if (this.view === 'third') {
       const dist = 5.4;
@@ -386,7 +364,10 @@ export class Player {
       const cx = this.pos.x - fx * dist;
       const cz = this.pos.z - fz * dist;
       const cy = Math.max(ty + 1.1, this.terrain.heightAt(cx, cz) + 0.5);
-      this.cam.position.set(cx, cy, cz);
+      _camOrigin.set(this.pos.x, this.pos.y + (this.onBoat ? 1.0 : 1.35), this.pos.z);
+      _camDesired.set(cx, cy, cz);
+      const clip = this.terrain.cameraClipFraction(_camOrigin, _camDesired);
+      this.cam.position.copy(_camOrigin).lerp(_camDesired, clip);
       this.cam.lookAt(tx, ty, tz);
     }
   }

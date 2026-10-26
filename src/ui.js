@@ -133,7 +133,7 @@ export class UI {
         <div id="tk-gear"></div>
         <div id="tk-depth"></div>
       </div>
-      <div id="lock-hint">点击画面锁定鼠标视角</div>
+      <div id="lock-hint">点击画面锁定视角 · Esc 释放鼠标</div>
     </div>
     <div id="panel" style="display:none"><div id="panel-box"><div id="panel-head"></div><div id="panel-body"></div></div></div>
     <div id="catch-overlay" style="display:none"></div>
@@ -683,13 +683,16 @@ export class UI {
             <tr><td>Q / E</td><td>左 / 右转向</td></tr>
             <tr><td>Z / X</td><td>换饵 / 换拟饵（前一个 / 后一个）</td></tr>
             <tr><td>鼠标</td><td>视角（点击画面锁定）</td></tr>
+            <tr><td>Esc</td><td>释放鼠标 / 关闭面板</td></tr>
             <tr><td>左键长按→松开</td><td>蓄力抛竿</td></tr>
             <tr><td>左键（漂相/攻击时）</td><td>起竿刺鱼</td></tr>
             <tr><td>右键</td><td>收线（路亚/遛鱼）</td></tr>
             <tr><td>滚轮</td><td>台钓调漂深 / 路亚收线速度</td></tr>
             <tr><td>空格</td><td>路亚抽竿（跳停诱鱼）</td></tr>
             <tr><td>F</td><td>抄鱼入护（鱼靠岸提示时）</td></tr>
-            <tr><td>1 / 2</td><td>台钓 / 路亚</td></tr><tr><td>3 / 4 / 5</td><td>竿角三档：低 / 中 / 高（决定抛距与风线高度）</td></tr><tr><td>T</td><td>上船 / 下船（船钓：划到水里任意位置下竿）</td></tr><tr><td>3 / 4 / 5</td><td>竿角三档：低 / 中 / 高（决定抛距与风线高度）</td></tr><tr><td>T</td><td>上船 / 下船（船钓：划到水里任意位置下竿）</td></tr>
+            <tr><td>1 / 2</td><td>台钓 / 路亚</td></tr>
+            <tr><td>3 / 4 / 5</td><td>竿角三档：低 / 中 / 高（决定抛距与风线高度）</td></tr>
+            <tr><td>T</td><td>上船 / 下船（船钓：划到水里任意位置下竿）</td></tr>
             <tr><td>G</td><td>朝瞄准处打窝（聚鱼）</td></tr>
             <tr><td>V</td><td>第一 / 第三人称视角切换</td></tr><tr><td>I</td><td>台钓等待时：潜入水下看鱼</td></tr>
             <tr><td>R</td><td>收竿回岸</td></tr>

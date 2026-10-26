@@ -3,16 +3,16 @@ import * as THREE from '../lib/three.module.js';
 import { Input } from './input.js?v=16';
 import { GameState } from './gameState.js?v=16';
 import { World, WEATHERS } from './world.js?v=16';
-import { Terrain } from './terrain.js?v=16';
+import { Terrain } from './terrain.js?v=18';
 import { Water } from './water.js?v=16';
 import { FishManager } from './fishManager.js?v=16';
-import { Player } from './player.js?v=16';
+import { Player } from './player.js?v=22';
 import { Caster } from './casting.js?v=16';
 import { FloatSession } from './floatFishing.js?v=16';
 import { LureSession } from './lureFishing.js?v=16';
 import { Fight } from './fight.js?v=16';
 import { Cards } from './cards.js?v=16';
-import { UI } from './ui.js?v=16';
+import { UI } from './ui.js?v=18';
 import { AudioSys } from './audio.js?v=16';
 import { SPECIES_BY_ID, GROUPS, speciesByGroup, SEASON_INFO } from './fishData.js?v=16';
 import { RODS, LURE_RODS, LINES, REELS, LURE_REELS, FLOATS, BAITS, LURES, CHUM } from './tackleData.js?v=16';
@@ -22,14 +22,37 @@ import { clamp, rand, fmtKg } from './util.js?v=16';
 
 // ===== 渲染基础 =====
 const canvas = document.getElementById('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+let renderer = null;
+let graphicsStopped = false;
+function stopGraphics(title, detail) {
+  graphicsStopped = true;
+  canvas.style.display = 'none';
+  const root = document.getElementById('ui-root');
+  root.style.pointerEvents = 'auto';
+  root.innerHTML = `<div class="webgl-error" role="alert"><div class="webgl-error-card">
+    <h2>${title}</h2><p>${detail}</p>
+    <p>请使用支持 WebGL 的新版 Chrome、Edge 或 360 浏览器，并在浏览器设置中启用图形加速。</p>
+    <button id="graphics-retry" class="big-btn" type="button">重新加载</button>
+  </div></div>`;
+  document.getElementById('graphics-retry').onclick = () => location.reload();
+}
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    stopGraphics('3D 图形上下文已中断', '浏览器释放了图形资源，请重新加载页面恢复游戏。');
+  });
+} catch (e) {
+  stopGraphics('当前浏览器无法运行 3D 游戏', '未能创建 WebGL 图形上下文，游戏没有启动。');
+}
 
+if (renderer) {
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xbfd4e4, 90, 260);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 900);
@@ -190,6 +213,12 @@ const controller = {
   },
 };
 const ui = new UI(document.getElementById('ui-root'), controller);
+// 锁定鼠标的这次点击只用于锁定，不把同一组按下/松开事件当成抛竿
+for (const type of ['mousedown', 'mouseup']) {
+  canvas.addEventListener(type, (e) => {
+    if (e.button === 0 && document.pointerLockElement !== canvas) e.stopImmediatePropagation();
+  }, true);
+}
 canvas.addEventListener('click', () => {
   if (S.phase !== 'title' && !ui.panelOpen && S.phase !== 'catch') input.requestLock();
 });
@@ -207,8 +236,10 @@ function resetSessions() {
   caster.active = null;
   caster.trail.hide();
   player.setBend(0);
+  player.triggerAction(null);
   S.fight = null;
   S.underCam = false;
+  player.setUnderwater(false);
   ui.underwater(false);
   ui.setFight(null);
   ui.setCharge(null);
@@ -303,11 +334,13 @@ function doCast(power) {
       },
     (msg) => { ui.toast(msg, 'bad'); S.phase = 'idle'; }
   );
+  player.triggerAction('cast');
   S.phase = 'flying';
 }
 
 // ===== 钓获结算 =====
 function beginFight(fish, startPos) {
+  player.triggerAction('strike');
   const st = rodStats();
   const indiv = cards.rollIndividual(fish.sp);
   S.pendingIndiv = indiv;
@@ -412,6 +445,7 @@ let t = 0;
 const _fw = new THREE.Vector3(), _tip = new THREE.Vector3();
 
 function frame() {
+  if (graphicsStopped) return;
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
   t += dt;
@@ -435,8 +469,10 @@ function frame() {
   const catchOpen = S.phase === 'catch';
   const playing = !panelOpen && !catchOpen;
   const locked = input.locked;
+  const reelingNow = input.isDown('RMB') && !panelOpen && !catchOpen && (S.phase === 'fight' || S.phase === 'lureWait');
 
   // 玩家更新（视角总是允许；移动仅 idle）
+  player.setFishingState(S.phase, reelingNow);
   player.update(dt, input, playing && (S.phase === 'idle' || (player.onBoat && (S.phase === 'floatWait' || S.phase === 'lureWait'))));
   player.rodTipWorld(_tip);
   // Q/E 左右转向（持续按住）
@@ -462,6 +498,7 @@ function frame() {
     else if (input.justDown('KeyV') && S.phase !== 'title') {
       player.setView(player.view === 'first' ? 'third' : 'first');
       S.underCam = false;
+      player.setUnderwater(false);
       ui.underwater(false);
       ui.toast(player.view === 'third' ? '\u7b2c\u4e09\u4eba\u79f0\u89c6\u89d2' : '\u7b2c\u4e00\u4eba\u79f0\u89c6\u89d2', 'info');
     }
@@ -476,13 +513,6 @@ function frame() {
     if (S.phase === 'idle') {
       if (input.justDown('Digit1')) setMode('float');
       else if (input.justDown('Digit2')) setMode('lure');
-      else if (input.justDown('KeyT')) {
-        const r = player.toggleBoat();
-        if (r === 'on') ui.toast('🚣 上船！WASD 划到水里任意位置下竿', 'good');
-        else if (r === 'off') ui.toast('\u5df2\u9760\u5cb8\u4e0b\u8239', 'info');
-        else if (r === 'deep') ui.toast('水太深无法下船，划到岸边浅水再按 T', 'bad');
-        else ui.toast('面前没有可上船的水面，面向水边再按 T', 'bad');
-      }
       else if (input.justDown('KeyZ') || input.justDown('KeyX')) cycleBait(input.justDown('KeyX') ? 1 : -1);
       else if (input.justDown('KeyG')) dropChum();
       else if (input.justDown('KeyU')) {
@@ -516,6 +546,7 @@ function frame() {
       if (input.justDown('KeyI')) {
         if (player.view !== 'first') player.setView('first');
         S.underCam = !S.underCam;
+        player.setUnderwater(S.underCam);
         ui.underwater(S.underCam);
       }
       if (input.justDown('KeyR')) { ui.toast('收竿回岸', 'info'); resetSessions(); }
@@ -536,7 +567,8 @@ function frame() {
       }
     } else if (S.phase === 'fight') {
       if (input.justDown('KeyF')) {
-        if (!S.fight.land()) ui.toast('还不到抄鱼时机！先把鱼遛乏', 'info');
+        if (S.fight.land()) player.triggerAction('land');
+        else ui.toast('还不到抄鱼时机！先把鱼遛乏', 'info');
       }
     }
   } else if (panelOpen) {
@@ -554,7 +586,6 @@ function frame() {
     audio.setRain(world.weather === 'rain');
   }
   // 收线棘轮声
-  const reelingNow = input.isDown('RMB') && !panelOpen && !catchOpen && (S.phase === 'fight' || S.phase === 'lureWait');
   if (reelingNow) {
     audio.reelTimer = (audio.reelTimer || 0) - dt;
     if (audio.reelTimer <= 0) { audio.reelTimer = 0.17; audio.reelTick(); }
@@ -666,7 +697,7 @@ function updatePrompt() {
   else if (S.phase === 'flying') html = '……';
   else if (S.phase === 'floatWait') {
     const bottom = floatS.isBottom ? ' · 钓底' : '';
-    html = `<b>滚轮调漂</b> · 漂相一出<b>左键起竿</b> · V 潜水看鱼 · R 收竿`;
+    html = `<b>滚轮调漂</b> · 漂相一出<b>左键起竿</b> · I 潜水看鱼 · R 收竿`;
     ui.setDepthInfo(`钓深 ${floatS.depth.toFixed(1)}m / 水深 ${floatS.waterDepth.toFixed(1)}m${bottom}`);
   } else if (S.phase === 'lureWait') {
     html = `<b>右键收线</b>（滚轮变速 ${['慢', '中慢', '中', '中快', '快'][lureS.speedIdx]}） · 空格抽竿 · 攻击时<b>左键刺鱼</b> · R 收回`;
@@ -697,8 +728,9 @@ function updateTackleBar() {
 
 // 调试/测试接口（不影响正常玩法）
 window.__game = {
-  S, state, ui, world, player, fishMan, floatS, lureS, cards, caster,
+  S, state, ui, world, player, fishMan, floatS, lureS, cards, caster, input,
   doCast, beginFight, resolveCatch, resetSessions, SPECIES_BY_ID,
 };
 
 frame();
+}

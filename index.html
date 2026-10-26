@@ -103,7 +103,7 @@ b.warn, .warn { color: #ff9a7a; }
 .dex-head .dex-p2 { color: var(--c-dim); }
 #btn-claim { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--c-gold); color: var(--c-gold); background: #2a2410; animation: pulse 1.5s infinite; }
 .claimed { color: var(--c-good); font-size: 13px; }
-.dex-tip { color: #5a6a78; font-size: 12px; margin-top: 10px; }
+.dex-tip { color: #96a8b8; font-size: 12px; margin-top: 10px; }
 
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
 .card-grid.big { display: flex; flex-direction: column; gap: 14px; }
@@ -212,7 +212,7 @@ b.warn, .warn { color: #ff9a7a; }
 /* 卡册 */
 .album-head { display: flex; justify-content: space-between; color: var(--c-dim); margin-bottom: 14px; }
 .album-gtitle { color: #cddcea; font-weight: 700; margin-bottom: 8px; }
-.empty-tip { color: #5a6a78; text-align: center; padding: 60px 0; font-size: 15px; }
+.empty-tip { color: #96a8b8; text-align: center; padding: 60px 0; font-size: 15px; }
 
 /* 商店 */
 .shop-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -220,9 +220,12 @@ b.warn, .warn { color: #ff9a7a; }
 .shop-tabs button.on { border-color: var(--c-gold); color: var(--c-gold); }
 .shop-money { margin-bottom: 12px; color: var(--c-dim); }
 .shop-money b { color: var(--c-gold); }
-.shop-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border: 1px solid #22303e; border-radius: 8px; margin-bottom: 8px; }
-.sr-info b { margin-right: 10px; }
-.sr-info span { color: var(--c-dim); font-size: 12px; }
+.shop-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 11px 14px; border: 1px solid #22303e; border-radius: 8px; margin-bottom: 8px; }
+.sr-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sr-info b { line-height: 1.4; }
+.sr-info span { display: block; color: #9aabba; font-size: 12px; line-height: 1.55; }
+.sr-info .sr-len { color: #9ec4e0; }
+.sr-act { flex-shrink: 0; }
 .sr-act button { padding: 7px 18px; border-radius: 6px; border: 1px solid #3a6a8a; background: #14283a; color: #9ecfe8; }
 .sr-act button:hover { border-color: var(--c-gold); color: var(--c-gold); }
 .equipped { color: var(--c-good); font-size: 13px; }
@@ -270,6 +273,34 @@ b.warn, .warn { color: #ff9a7a; }
 .catch-value { margin: 18px 0; font-size: 16px; color: #cddcea; }
 .catch-btns button.big-btn { font-size: 17px; }
 
+/* ===== 小窗口与图形能力兜底 ===== */
+@media (max-width: 1100px) {
+  #status-bar { gap: 10px; padding: 8px 10px; font-size: 12px; }
+  #btn-bar { gap: 6px; }
+  #btn-bar button { padding: 7px 9px; font-size: 12px; }
+}
+@media (max-width: 860px) {
+  #status-bar { top: 14px; left: 16px; right: 16px; justify-content: space-between; gap: 8px; white-space: nowrap; }
+  #btn-bar { top: 54px; left: 16px; right: 16px; justify-content: flex-end; flex-wrap: wrap; }
+  #toasts { top: 100px; }
+  .shop-row { align-items: flex-start; }
+  .help-cols { gap: 18px; }
+  .help-tb td:first-child { width: 145px; }
+}
+@media (max-width: 560px) {
+  #status-bar { flex-wrap: wrap; justify-content: center; white-space: normal; }
+  #btn-bar { justify-content: center; }
+  #st-spot { display: none; }
+  .help-cols { flex-direction: column; }
+  .shop-row { flex-direction: column; }
+  .sr-act { align-self: flex-end; }
+}
+.webgl-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--c-bg); pointer-events: auto; }
+.webgl-error-card { width: min(560px, 92vw); padding: 28px; border: 1px solid #3a5a78; border-radius: 14px; background: #142033; text-align: center; }
+.webgl-error-card h2 { margin-bottom: 14px; color: #f4ead2; }
+.webgl-error-card p { color: #b8c8d8; line-height: 1.8; margin-bottom: 12px; }
+.webgl-error-card button { margin-top: 10px; }
+
 /* ===== 特效 ===== */
 #underwater-tint { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 40%, #0a3a2e88); box-shadow: inset 0 0 140px #0a4a3a99; pointer-events: none; display: none; }
 #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
@@ -280,6 +311,6 @@ b.warn, .warn { color: #ff9a7a; }
 <body>
 <canvas id="game"></canvas>
 <div id="ui-root"></div>
-<script type="module" src="./src/main.js?v=16"></script>
+<script type="module" src="./src/main.js?v=21"></script>
 </body>
 </html>

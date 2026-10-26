@@ -2,6 +2,7 @@
 // 经纬度 → 世界坐标：x = (lng-114.30)*640, z = (30.55-lat)*640
 import * as THREE from '../lib/three.module.js';
 import { fbm, smoothstep, rand } from './util.js?v=16';
+import { SPOTS, shorePointFor } from './spots.js?v=16';
 
 export const WORLD_SIZE = 560;
 
@@ -47,6 +48,15 @@ export class Terrain {
     this.scene = scene;
     this.heightAt = this._h;
     this._buildMesh();
+    const defaultShore = this.findShore(63, 25, 80);
+    this.clearZones = [
+      { x: defaultShore.x, z: defaultShore.z, r: 10 },
+      ...SPOTS.map((spot) => {
+        const p = shorePointFor(spot, this);
+        return { x: p.x, z: p.z, r: 10 };
+      }),
+    ];
+    this.treeColliders = [];
     this._buildVegetation();
   }
   _h(x, z) {
@@ -125,6 +135,9 @@ export class Terrain {
     mesh.receiveShadow = true;
     this.scene.add(mesh);
   }
+  _inClearZone(x, z, margin = 0) {
+    return this.clearZones.some((zone) => Math.hypot(x - zone.x, z - zone.z) < zone.r + margin);
+  }
   _buildVegetation() {
     const reedGeo = new THREE.ConeGeometry(0.16, 2.6, 4, 1, true);
     const reedMat = new THREE.MeshStandardMaterial({ color: 0x7a8a4e, roughness: 1, flatShading: true });
@@ -152,7 +165,7 @@ export class Terrain {
     const trees = [];
     for (let i = 0; i < 900; i++) {
       const x = rand(-265, 265), z = rand(-265, 265);
-      if (this._h(x, z) > 1.6 && fbm(x * 0.03 + 5, z * 0.03, 3) > 0.55) trees.push([x, this._h(x, z), z]);
+      if (this._h(x, z) > 1.6 && fbm(x * 0.03 + 5, z * 0.03, 3) > 0.55 && !this._inClearZone(x, z)) trees.push([x, this._h(x, z), z]);
       if (trees.length >= 130) break;
     }
     const trunkMesh = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
@@ -160,6 +173,14 @@ export class Terrain {
     trunkMesh.castShadow = crownMesh.castShadow = true;
     trees.forEach(([x, y, z], i) => {
       const sc = rand(0.8, 1.8);
+      this.treeColliders.push({
+        x, y, z, scale: sc,
+        trunkTop: y + 2.4 * sc,
+        trunkRadius: 0.3 * sc,
+        crownBottom: y + 1.8 * sc,
+        crownTop: y + 7 * sc,
+        crownRadius: 2.2 * sc,
+      });
       p.set(x, y + 1.2 * sc, z); q.identity(); s.set(sc, sc, sc);
       m.compose(p, q, s); trunkMesh.setMatrixAt(i, m);
       p.set(x, y + (2.4 + 2.0) * sc, z);
@@ -173,7 +194,7 @@ export class Terrain {
     for (let i = 0; i < 600; i++) {
       const x = rand(-265, 265), z = rand(-265, 265);
       const h = this._h(x, z);
-      if (h > -0.3 && h < 0.9) rocks.push([x, h, z]);
+      if (h > -0.3 && h < 0.9 && !this._inClearZone(x, z, -5.5)) rocks.push([x, h, z]);
       if (rocks.length >= 90) break;
     }
     const rockMesh = new THREE.InstancedMesh(rockGeo, rockMat, rocks.length);
@@ -185,6 +206,29 @@ export class Terrain {
       rockMesh.setMatrixAt(i, m);
     });
     this.scene.add(rockMesh);
+  }
+  // 第三人称相机杆从人物头部向后采样，返回不穿地形/树干/树冠的最近安全比例
+  cameraClipFraction(from, to, padding = 0.28) {
+    const steps = 24;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+      const z = from.z + (to.z - from.z) * t;
+      if (y < this._h(x, z) + padding) return Math.max(0.22, t - 0.08);
+      for (const tree of this.treeColliders) {
+        const dx = x - tree.x, dz = z - tree.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 > (tree.crownRadius + padding) ** 2) continue;
+        if (y >= tree.y && y <= tree.trunkTop + padding && d2 < (tree.trunkRadius + padding) ** 2) return Math.max(0.22, t - 0.08);
+        if (y >= tree.crownBottom - padding && y <= tree.crownTop + padding) {
+          const k = Math.max(0, Math.min(1, (y - tree.crownBottom) / (tree.crownTop - tree.crownBottom)));
+          const r = tree.crownRadius * (1 - k) + padding;
+          if (d2 < r * r) return Math.max(0.22, t - 0.08);
+        }
+      }
+    }
+    return 1;
   }
   isWaterNear(x, z) {
     return this.isWater(x + 1.5, z) || this.isWater(x - 1.5, z) || this.isWater(x, z + 1.5) || this.isWater(x, z - 1.5);
