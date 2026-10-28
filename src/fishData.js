@@ -1,4 +1,4 @@
-// 鱼种数据：参考长江中游（武汉江段及通江湖泊）真实鱼类区系整理（57 种）
+// 鱼种数据：参考长江中游（武汉江段及通江湖泊）真实鱼类区系整理（64 种）
 // zones: lake 湖泊静水 / river 江河流水
 // layer: upper 上层 / mid 中层 / bottom 下层 / benthic 底栖贴底
 // hours: dawn 晨(5-8) / day 昼(8-17) / dusk 暮(17-20) / night 夜(20-5)
@@ -7,6 +7,7 @@
 export const GROUPS = [
   { id: 'bigFour',   name: '四大家鱼',      icon: '🐋', reward: 400 },
   { id: 'crucian',   name: '鲤与鲫',        icon: '🐟', reward: 200 },
+  { id: 'miscCyprinid', name: '其他鲤科',   icon: '🌿', reward: 300 },
   { id: 'culter',    name: '鲌类 · 路亚明星', icon: '🦈', reward: 600 },
   { id: 'bream',     name: '鳊鲂类',        icon: '🎋', reward: 300 },
   { id: 'xu',        name: '鲴类',          icon: '🍂', reward: 300 },
@@ -54,7 +55,7 @@ export const SPECIES = [
     baits: { paste: 3, pellet: 1.5 }, lures: {}, w: [1.5, 18], len: 105, power: 2.0, rarity: 2, body: 'carp',
     col: { back: 0x6f7d86, belly: 0xf2f5f7, fin: 0x8a97a0 }, pattern: 'none',
     desc: '滤食性上层鱼，钓鲢鳙讲究雾化，钓浮挂拉饵方有口。' },
-  { id: 'yong', name: '鳙', latin: 'Aristichthys nobilis', group: 'bigFour', zones: ['lake', 'river'], layer: 'upper', hours: ['day'],
+  { id: 'yong', name: '鳙', latin: 'Hypophthalmichthys nobilis', group: 'bigFour', zones: ['lake', 'river'], layer: 'upper', hours: ['day'],
     baits: { paste: 3, pellet: 1.5 }, lures: {}, w: [2, 42], len: 115, power: 2.4, rarity: 2, body: 'carp',
     col: { back: 0x3d4550, belly: 0xe8e3d8, fin: 0x555e6a }, pattern: 'spots',
     desc: '胖头鱼，头大占体长三分之一，湖中大鳙冲劲十足。' },
@@ -69,6 +70,12 @@ export const SPECIES = [
     col: { back: 0x707c5a, belly: 0xe6e2c8, fin: 0x8a8f60 }, pattern: 'none',
     desc: '入门第一鱼，送漂是它的招牌动作，一年四季都可钓。' },
 
+  // ================= 其他鲤科 =================
+  { id: 'chiyan', name: '赤眼鳟', latin: 'Squaliobarbus curriculus', group: 'miscCyprinid', zones: ['river', 'lake'], layer: 'mid', hours: D,
+    baits: { corn: 2, wheat: 2, pellet: 1.5, paste: 1 }, lures: { micro: 1.5, spoon: 1 }, w: [0.2, 4.5], len: 55, power: 1.6, rarity: 2, body: 'carp',
+    col: { back: 0x5a6248, belly: 0xe6e8d8, fin: 0xa08a4a }, pattern: 'none',
+    desc: '眼上一点红，江河流水中层冲刺凶猛，玉米麦粒作钓，中钩后横冲直撞。' },
+
   // ================= 鲌类 =================
   { id: 'qiaozui', name: '翘嘴鲌', latin: 'Culter alburnus', group: 'culter', zones: ['lake', 'river'], layer: 'upper', hours: ['dawn', 'day', 'dusk'],
     baits: {}, lures: { minnow: 3, vib: 2.5, jig: 2, spoon: 1.5 }, w: [0.5, 13], len: 105, power: 2.8, rarity: 3, body: 'predator',
@@ -78,11 +85,15 @@ export const SPECIES = [
     baits: {}, lures: { spoon: 2, micro: 2, minnow: 1.5, jig: 1.5 }, w: [0.3, 5], len: 60, power: 1.8, rarity: 3, body: 'predator',
     col: { back: 0x60646e, belly: 0xeef0f2, fin: 0xd08a6a }, pattern: 'none',
     desc: '红尾鲌，尾鳍橙红，常成群巡游追捕餐条。' },
+  { id: 'qingshao', name: '青梢鲌', latin: 'Chanodichthys dabryi', group: 'culter', zones: ['lake'], layer: 'mid', hours: D,
+    baits: { paste: 1.5 }, lures: { micro: 2.5, spoon: 1.5, minnow: 1.5 }, w: [0.1, 1.6], len: 35, power: 1.0, rarity: 2, body: 'predator',
+    col: { back: 0x5c6a72, belly: 0xf0f4f6, fin: 0xa0b0b8 }, pattern: 'none',
+    desc: '湖库常见的"青梢"，成群在中上层追小鱼，拉饵微物路亚都能上，手感像小号翘嘴。' },
   { id: 'nijiantou', name: '拟尖头鲌', latin: 'Culter oxycephaloides', group: 'culter', zones: ['river'], layer: 'mid', hours: ['dawn', 'dusk'],
     baits: {}, lures: { minnow: 2, jig: 1.5 }, w: [0.4, 3.5], len: 55, power: 1.6, rarity: 3, body: 'predator',
     col: { back: 0x4f5a66, belly: 0xeceff1, fin: 0x93a5b3 }, pattern: 'none',
     desc: '江流中的尖嘴掠食者，头背显著隆起。' },
-  { id: 'hongqi', name: '红鳍原鲌', latin: 'Cultrichthys erythropterus', group: 'culter', zones: ['lake'], layer: 'upper', hours: ['dawn', 'dusk'],
+  { id: 'hongqi', name: '红鳍原鲌', latin: 'Chanodichthys erythropterus', group: 'culter', zones: ['lake'], layer: 'upper', hours: ['dawn', 'dusk'],
     baits: {}, lures: { micro: 2, spoon: 1.5 }, w: [0.1, 1.2], len: 30, power: 0.8, rarity: 2, body: 'predator',
     col: { back: 0x6b7078, belly: 0xf0f0f0, fin: 0xe07a5a }, pattern: 'none',
     desc: '小型鲌，臀鳍与尾鳍下叶泛红，水草边常见。' },
@@ -100,6 +111,10 @@ export const SPECIES = [
     baits: { corn: 2, pellet: 2, wheat: 1.5 }, lures: {}, w: [0.5, 6.5], len: 55, power: 1.7, rarity: 3, body: 'bream',
     col: { back: 0x454f57, belly: 0xe6e9ea, fin: 0x5d6870 }, pattern: 'stripes',
     desc: '比团头鲂更偏流水，头背面呈三角形，江中劲道更足。' },
+  { id: 'changchunbian', name: '长春鳊', latin: 'Parabramis pekinensis', group: 'bream', zones: ['lake', 'river'], layer: 'mid', hours: DN,
+    baits: { wheat: 2, corn: 1.5, pellet: 1.5 }, lures: {}, w: [0.2, 3.2], len: 45, power: 1.3, rarity: 2, body: 'bream',
+    col: { back: 0x5a6660, belly: 0xe8ece6, fin: 0x8a968c }, pattern: 'none',
+    desc: '鳊鱼里的"高个子"，体高背隆，湖库缓流都能碰上，和武昌鱼是近亲。' },
 
   // ================= 鲴类 =================
   { id: 'yingu', name: '银鲴', latin: 'Xenocypris argentea', group: 'xu', zones: ['lake'], layer: 'bottom', hours: ['day'],
@@ -110,6 +125,10 @@ export const SPECIES = [
     baits: { wheat: 2.5, pellet: 2 }, lures: {}, w: [0.1, 2.4], len: 40, power: 1.2, rarity: 2, body: 'gudgeon',
     col: { back: 0x565f52, belly: 0xecebe0, fin: 0xd4a83c }, pattern: 'none',
     desc: '尾鳍杏黄，翻搅水底泥沙觅食藻类，钓底常见。' },
+  { id: 'yuanwen', name: '圆吻鲴', latin: 'Distoechodon tumirostris', group: 'xu', zones: ['lake', 'river'], layer: 'bottom', hours: ['day'],
+    baits: { wheat: 2, pellet: 2, paste: 1 }, lures: {}, w: [0.1, 2.2], len: 40, power: 1.1, rarity: 2, body: 'gudgeon',
+    col: { back: 0x606a5e, belly: 0xedefe4, fin: 0xc8b070 }, pattern: 'none',
+    desc: '圆钝的吻部专刮石头上的藻类，成群进窝，鲴鱼里的大个子。' },
 
   // ================= 䱗条类 =================
   { id: 'baitiao', name: '䱗（白条）', latin: 'Hemiculter leucisculus', group: 'chen', zones: ['lake', 'river'], layer: 'upper', hours: ['day'],
@@ -140,6 +159,10 @@ export const SPECIES = [
     baits: { worm: 2 }, lures: {}, w: [0.05, 0.9], len: 28, power: 0.5, rarity: 2, body: 'gudgeon',
     col: { back: 0x60665a, belly: 0xe2e2d2, fin: 0x7e8468 }, pattern: 'spots',
     desc: '吻部尖长，用唇在石缝间搜刮食物。' },
+  { id: 'sheju', name: '蛇鮈', latin: 'Saurogobio dabryi', group: 'gudgeon', zones: ['river'], layer: 'benthic', hours: ['day'],
+    baits: { worm: 2, bloodworm: 1.5 }, lures: {}, w: [0.01, 0.3], len: 18, power: 0.4, rarity: 1, body: 'gudgeon',
+    col: { back: 0x6a7062, belly: 0xe2e4d6, fin: 0x9aa088 }, pattern: 'spots',
+    desc: '细长如小蛇，体侧一列黑斑，贴着江底碎石觅食，蚯蚓小钩正口。' },
   { id: 'yinji', name: '银鮈', latin: 'Squalidus argentatus', group: 'gudgeon', zones: ['lake', 'river'], layer: 'bottom', hours: ['day'],
     baits: { worm: 2, bloodworm: 1.5 }, lures: {}, w: [0.008, 0.15], len: 12, power: 0.25, rarity: 1, body: 'gudgeon',
     col: { back: 0x808a90, belly: 0xf4f6f6, fin: 0xb4bec4 }, pattern: 'none',
@@ -148,6 +171,10 @@ export const SPECIES = [
     baits: { worm: 2, paste: 1 }, lures: {}, w: [0.004, 0.1], len: 10, power: 0.2, rarity: 1, body: 'gudgeon',
     col: { back: 0x6e7862, belly: 0xe6e6d8, fin: 0x8a927a }, pattern: 'stripes',
     desc: '岸边最常见的"万年小杂鱼"，护卵期身上出彩虹色。' },
+  { id: 'banghua', name: '棒花鱼', latin: 'Abbottina rivularis', group: 'gudgeon', zones: ['lake', 'river'], layer: 'benthic', hours: ['day'],
+    baits: { worm: 2, paste: 1 }, lures: {}, w: [0.003, 0.08], len: 10, power: 0.2, rarity: 1, body: 'gudgeon',
+    col: { back: 0x6e6a52, belly: 0xe0dcc8, fin: 0x8e8a6c }, pattern: 'spots',
+    desc: '趴底小棒槌，胸鳍像两把扇子撑着身体，河湾浅滩一抓一大把。' },
   { id: 'huaquan', name: '华鳈', latin: 'Sarcocheilichthys sinensis', group: 'gudgeon', zones: ['lake'], layer: 'benthic', hours: ['day'],
     baits: { worm: 2, pellet: 1 }, lures: {}, w: [0.03, 0.5], len: 22, power: 0.45, rarity: 2, body: 'gudgeon',
     col: { back: 0x5a6268, belly: 0xdfe2da, fin: 0x8a9298 }, pattern: 'stripes',
@@ -182,15 +209,15 @@ export const SPECIES = [
     desc: '紫褐色横纹的江鳅，流水石缝中的隐士。' },
   { id: 'changbo', name: '长薄鳅', latin: 'Leptobotia elongata', group: 'loach', zones: ['river'], layer: 'bottom', hours: ['night'],
     baits: { worm: 1 }, lures: {}, w: [0.5, 3.5], len: 45, power: 1.6, rarity: 4, body: 'loach',
-    col: { back: 0x6a4a3a, belly: 0xe0d2c2, fin: 0x8a6a5a }, pattern: 'stripes',
-    desc: '鳅中巨物，体侧深色宽带纹，长江稀有鱼种，钓到是运气。' },
+    col: { back: 0x6a4a3a, belly: 0xe0d2c2, fin: 0x8a6a5a }, pattern: 'stripes', prot: true,
+    desc: '鳅中巨物，体侧深色宽带纹。国家二级保护动物，钓到是缘分，请立即放流！' },
 
   // ================= 鲿科 =================
-  { id: 'huangsang', name: '黄颡鱼（黄辣丁）', latin: 'Pelteobagrus fulvidraco', group: 'bagrid', zones: ['lake', 'river'], layer: 'bottom', hours: ['dusk', 'night'],
+  { id: 'huangsang', name: '黄颡鱼（黄辣丁）', latin: 'Tachysurus fulvidraco', group: 'bagrid', zones: ['lake', 'river'], layer: 'bottom', hours: ['dusk', 'night'],
     baits: { worm: 3, bloodworm: 2.5 }, lures: { texas: 0.5 }, w: [0.05, 1.2], len: 25, power: 1.0, rarity: 1, body: 'catfish',
     col: { back: 0x6a5a2e, belly: 0xe8dca8, fin: 0x8a7a3e }, pattern: 'spots', whiskers: true,
     desc: '黄骨丁、嘎鱼都是它。背鳍胸鳍带硬刺，抓的时候要小心，夜钓挂蚯蚓必中。' },
-  { id: 'washi', name: '瓦氏黄颡鱼', latin: 'Pelteobagrus vachellii', group: 'bagrid', zones: ['river'], layer: 'bottom', hours: ['dusk', 'night'],
+  { id: 'washi', name: '瓦氏黄颡鱼', latin: 'Tachysurus vachellii', group: 'bagrid', zones: ['river'], layer: 'bottom', hours: ['dusk', 'night'],
     baits: { worm: 3 }, lures: { texas: 0.8 }, w: [0.2, 2.6], len: 40, power: 1.6, rarity: 2, body: 'catfish',
     col: { back: 0x5e5030, belly: 0xe4d8a8, fin: 0x7c6c40 }, pattern: 'none', whiskers: true,
     desc: '长江中游优势种，比黄颡更大更凶，江钓夜口的常客。' },
@@ -234,7 +261,7 @@ export const SPECIES = [
     desc: '湖北人叫财鱼，煲汤一绝。雷蛙扔进草洞，"轰"的一声炸水最是刺激。' },
 
   // ================= 塘鳢·斗鱼 =================
-  { id: 'shatangli', name: '沙塘鳢（土憨巴）', latin: 'Odontobutis obscura', group: 'goby', zones: ['lake'], layer: 'benthic', hours: ['dawn', 'dusk'],
+  { id: 'shatangli', name: '沙塘鳢（土憨巴）', latin: 'Odontobutis sinensis', group: 'goby', zones: ['lake'], layer: 'benthic', hours: ['dawn', 'dusk'],
     baits: { worm: 2.5, bloodworm: 1.5 }, lures: {}, w: [0.02, 0.35], len: 18, power: 0.4, rarity: 2, body: 'goby',
     col: { back: 0x5a5248, belly: 0xd8d2c4, fin: 0x746a5c }, pattern: 'spots',
     desc: '呆头呆脑趴在石头上，虎头虎脑，老武汉的下酒菜。' },
@@ -272,8 +299,8 @@ export const SPECIES = [
   // ================= 洄游名贵 =================
   { id: 'daoyu', name: '刀鲚（长江刀鱼）', latin: 'Coilia nasus', group: 'migratory', zones: ['river'], layer: 'mid', hours: ['dawn'],
     baits: { paste: 1.5 }, lures: { micro: 1.5 }, w: [0.05, 0.4], len: 40, power: 0.8, rarity: 4, body: 'knife',
-    col: { back: 0x8a9aa8, belly: 0xf8fafc, fin: 0xd0dce4 }, pattern: 'none',
-    desc: '"长江三鲜"之首，身薄如刀，清明前最金贵。如今可遇不可求。' },
+    col: { back: 0x8a9aa8, belly: 0xf8fafc, fin: 0xd0dce4 }, pattern: 'none', prot: true,
+    desc: '"长江三鲜"之首，身薄如刀。长江十年禁渔全面禁捕，偶遇请放流，护它种群恢复。' },
   { id: 'hetun', name: '暗纹东方鲀（河豚）', latin: 'Takifugu fasciatus', group: 'migratory', zones: ['river'], layer: 'bottom', hours: ['dawn', 'dusk'],
     baits: { worm: 2 }, lures: {}, w: [0.2, 1.8], len: 30, power: 1.0, rarity: 4, body: 'puffer',
     col: { back: 0x5a6a5e, belly: 0xeceee6, fin: 0xd8b06a }, pattern: 'spots',
@@ -304,6 +331,10 @@ export const SPECIES = [
     baits: { worm: 2.5, pellet: 2 }, lures: { texas: 1 }, w: [0.5, 12], len: 95, power: 2.4, rarity: 2, body: 'catfish',
     col: { back: 0x4a5058, belly: 0xdadfe4, fin: 0x646c76 }, pattern: 'spots', whiskers: true, alien: true,
     desc: '引进养殖后逃逸定居的"沟鲶"，湖库夜钓大物池的常客。' },
+  { id: 'luofei', name: '罗非鱼', latin: 'Oreochromis niloticus', group: 'protected', zones: ['lake'], layer: 'mid', hours: ['day'],
+    baits: { worm: 2, pellet: 2, paste: 1.5, corn: 1 }, lures: {}, w: [0.1, 2.5], len: 35, power: 1.0, rarity: 1, body: 'crucian',
+    col: { back: 0x4e5648, belly: 0xdfe2d2, fin: 0x6e7a5e }, pattern: 'stripes', alien: true,
+    desc: '外来养殖逃逸种，怕冷，暖季在浅水成群抢食，背鳍硬刺扎手。' },
 ];
 
 export const SPECIES_BY_ID = Object.fromEntries(SPECIES.map((s) => [s.id, s]));
@@ -321,13 +352,13 @@ const SEASON_TABLES = {
 };
 const SEASON_PREF = {
   qingyu: 'autumn', caoyu: 'warm', lian: 'summer', yong: 'summer',
-  li: 'spawner', ji: 'winter',
-  qiaozui: 'autumn', menggu: 'warm', nijiantou: 'summer', hongqi: 'summer', gan: 'warm',
-  wuchang: 'autumn', sanjiao: 'autumn',
-  yingu: 'cool', huangwei: 'summer',
+  li: 'spawner', ji: 'winter', chiyan: 'warm',
+  qiaozui: 'autumn', menggu: 'warm', nijiantou: 'summer', hongqi: 'summer', gan: 'warm', qingshao: 'warm',
+  wuchang: 'autumn', sanjiao: 'autumn', changchunbian: 'autumn',
+  yingu: 'cool', huangwei: 'summer', yuanwen: 'cool',
   baitiao: 'summer', yinpiao: 'summer',
   zhonghuapangpi: 'spawner', gaotipangpi: 'spawner',
-  tongyu: 'autumn', changwen: 'cool', yinji: 'all', maisui: 'summer', huaquan: 'cool', heiqian: 'cool',
+  tongyu: 'autumn', changwen: 'cool', yinji: 'all', maisui: 'summer', huaquan: 'cool', heiqian: 'cool', sheju: 'cool', banghua: 'summer',
   makou: 'spring', kuanqilai: 'spring',
   niqiu: 'summer', huaqi: 'all', zibo: 'autumn', changbo: 'autumn',
   huangsang: 'summer', washi: 'summer', jiangtuan: 'autumn', wusuli: 'cool',
@@ -339,7 +370,7 @@ const SEASON_PREF = {
   xinyu: 'spring', dayinxinyu: 'winter',
   daoyu: 'spring', hetun: 'spring', manli: 'autumn',
   yanzhiyu: 'all', zhonghuaxun: 'autumn',
-  jiazhou: 'spring', taiyangyu: 'summer', chawei: 'summer',
+  jiazhou: 'spring', taiyangyu: 'summer', chawei: 'summer', luofei: 'summer',
 };
 export const SEASON_BITE = { spring: 1.15, summer: 1.0, autumn: 1.25, winter: 0.6 };
 export const SEASON_INFO = {

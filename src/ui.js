@@ -1,8 +1,8 @@
 // 全部 DOM UI：HUD、面板（图鉴/卡册/成就/商店/渔护/帮助）、开卡动画
-import { SPECIES, GROUPS, RARITY, LAYERS, speciesByGroup, SPECIES_BY_ID, seasonPrefName } from './fishData.js?v=16';
+import { SPECIES, GROUPS, RARITY, LAYERS, speciesByGroup, SPECIES_BY_ID, seasonPrefName } from './fishData.js?v=17';
 import { RODS, LURE_RODS, LINES, REELS, LURE_REELS, FLOATS, BAITS, LURES, CHUM } from './tackleData.js?v=16';
 import { GRADES, SALVAGE, UPGRADE_COST } from './cards.js?v=16';
-import { SPOTS, worldToMap } from './spots.js?v=16';
+import { SPOTS, worldToMap } from './spots.js?v=18';
 import { fmtKg, fmtCm, fmtMoney } from './util.js?v=16';
 
 const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -21,7 +21,7 @@ const ACHIEVEMENTS = [
   { id: 'sturgeon', name: '长江之灵', icon: '🐋', desc: '钓到并放流中华鲟', check: (s, d) => !!d.album['zhonghuaxun'] },
   { id: 'rich', name: '富甲一方', icon: '💰', desc: '累计收入 10000 元', check: (s) => s.earned >= 10000 },
   { id: 'snap3', name: '线又断了', icon: '💔', desc: '断线 3 次（痛，但也是经历）', check: (s) => s.snapped >= 3 },
-  { id: 'allfish', name: '江城图鉴大师', icon: '👑', desc: '集齐全部 57 种鱼', check: (s, d) => Object.keys(d.dex).length >= SPECIES.length },
+  { id: 'allfish', name: '江城图鉴大师', icon: '👑', desc: '集齐全部 64 种鱼', check: (s, d) => Object.keys(d.dex).length >= SPECIES.length },
   { id: 'orange10', name: '鎏金卡册', icon: '✨', desc: '卡册集齐 10 张橙卡', check: (s, d) => Object.values(d.album).filter((a) => a.g >= 4).length >= 10 },
 ];
 
@@ -81,14 +81,14 @@ export class UI {
     <div id="title-screen">
       <div class="title-box">
         <div class="game-title">江城钓客</div>
-        <div class="game-sub">武汉江湖 3D 垂钓模拟 · 台钓 / 路亚 · 57 种鱼</div>
+        <div class="game-sub">武汉江湖 3D 垂钓模拟 · 台钓 / 路亚 · 64 种鱼</div>
         <div class="title-btns">
+          <button id="btn-continue" style="display:none">继续垂钓</button>
           <button id="btn-start">开始垂钓</button>
-          <button id="btn-continue" style="display:none">继续存档</button>
         </div>
         <div class="title-help">
           WASD 走动 · 鼠标视角 · <b>左键长按抛竿</b> · 漂相出现时<b>左键起竿</b> · 右键收线 · 滚轮调漂/变速<br>
-          台钓看漂相起竿；路亚收线诱鱼攻击。钓到保护鱼（胭脂鱼/中华鲟）请放流！
+          台钓看漂相起竿；路亚收线诱鱼攻击。钓到保护鱼（胭脂鱼/中华鲟/长薄鳅/刀鲚）请放流！
         </div>
       </div>
     </div>
@@ -105,7 +105,7 @@ export class UI {
         <button data-panel="map">地图 M</button>
         <button data-panel="dex">图鉴 Tab</button>
         <button data-panel="album">卡册 C</button>
-        <button data-panel="achv">成就 A</button>
+        <button data-panel="achv">成就 J</button>
         <button data-panel="shop">商店 B</button>
         <button data-panel="bag">渔护 N</button>
         <button data-panel="help">帮助 H</button>
@@ -146,13 +146,30 @@ export class UI {
     });
     this.$('#btn-start').onclick = () => this.game.startGame(false);
     this.$('#btn-continue').onclick = () => this.game.startGame(true);
-    if (this.game.hasSave()) this.$('#btn-continue').style.display = '';
+    if (this.game.hasSave()) {
+      // 有旧档：继续垂钓为主按钮，"新游戏"降次级并需二次确认（确认逻辑在 controller）
+      this.$('#btn-continue').style.display = '';
+      this.$('#btn-start').textContent = '新游戏';
+      this.$('#btn-start').classList.add('secondary');
+    }
     this.root.querySelectorAll('#mode-tabs button').forEach((b) => {
       b.onclick = () => this.game.setMode(b.dataset.mode);
     });
   }
   showHUD(v) { this.$('#hud').style.display = v ? 'block' : 'none'; this.$('#title-screen').style.display = v ? 'none' : 'flex'; }
 
+  // 通用二次确认弹窗（返回 Promise<boolean>）
+  confirmBox(html) {
+    return new Promise((res) => {
+      const el = document.createElement('div');
+      el.className = 'confirm-mask';
+      el.innerHTML = `<div class="confirm-card"><p>${html}</p>
+        <div class="cf-btns"><button class="cf-yes">确认</button><button class="cf-no">取消</button></div></div>`;
+      this.root.appendChild(el);
+      el.querySelector('.cf-yes').onclick = () => { el.remove(); res(true); };
+      el.querySelector('.cf-no').onclick = () => { el.remove(); res(false); };
+    });
+  }
   toast(msg, type = 'info') {
     const el = document.createElement('div');
     el.className = 'toast ' + type;
@@ -408,7 +425,9 @@ export class UI {
   renderPanel() {
     const head = this.$('#panel-head'), body = this.$('#panel-body');
     const titles = { map: '🗺️ 钓鱼地图 · 武汉江湖', dex: '📖 鱼类图鉴', album: '🃏 我的卡册', achv: '🏅 成就', shop: '🛒 渔具商店', bag: '🧺 渔护（本局渔获）', help: '❓ 帮助 · 操作' };
-    head.innerHTML = `<span>${titles[this.panel]}</span><button id="panel-close">✕ 关闭 (Esc)</button>`;
+    const pausedTag = (this.game.fishingActive && this.game.fishingActive())
+      ? '<span class="paused-tag">⏸ 作钓已暂停，关闭面板继续</span>' : '';
+    head.innerHTML = `<span>${titles[this.panel]}${pausedTag}</span><button id="panel-close">✕ 关闭 (Esc)</button>`;
     head.querySelector('#panel-close').onclick = () => this.closePanel();
     if (this.panel === 'map') this._map(body);
     else if (this.panel === 'dex') this._dex(body);
@@ -616,7 +635,7 @@ export class UI {
     const t = this.shopTab;
     if (t === 'rods') rows = ownedChk(RODS, st.owned.rods).map((o) => row(o, 'rod', '', `<span class="sr-len">竿长 ${o.len} 米 · 齐竿线 ${(o.len + 0.4).toFixed(1)} 米</span>`)).join('');
     else if (t === 'lureRods') rows = ownedChk(LURE_RODS, st.owned.lureRods).map((o) => row(o, 'lureRod', '', `<span class="sr-len">竿长 ${o.len} 米 · 抛距上限 ${o.cast} 米</span>`)).join('');
-    else if (t === 'lines') rows = ownedChk(LINES, st.owned.lines).map((o) => row(o, 'line')).join('');
+    else if (t === 'lines') rows = ownedChk(LINES, st.owned.lines).map((o) => row(o, 'line', '', `<span class="sr-len">拉力 ${o.strength}kg · 线杯 ${o.len}m${o.owned && eq.line !== o.id ? `（当前 ${LINES[eq.line].strength}kg）` : ''}</span>`)).join('');
     else if (t === 'reels') rows = ownedChk(REELS, st.owned.reels).map((o) => row(o, 'reel')).join('');
     else if (t === 'lureReels') rows = ownedChk(LURE_REELS, st.owned.lureReels).map((o) => row(o, 'lureReel')).join('');
     else if (t === 'floats') rows = ownedChk(FLOATS, st.owned.floats).map((o) => row(o, 'float')).join('');
@@ -698,7 +717,7 @@ export class UI {
             <tr><td>R</td><td>收竿回岸</td></tr>
             <tr><td>M</td><td>钓鱼地图 · 八大钓点传送</td></tr>
             <tr><td>U</td><td>静音开关</td></tr>
-            <tr><td>Tab/B/C/N/A/H</td><td>图鉴/商店/卡册/渔护/成就/帮助</td></tr>
+            <tr><td>Tab/B/C/N/J/H</td><td>图鉴/商店/卡册/渔护/成就/帮助</td></tr>
           </table>
         </div>
         <div>
@@ -706,11 +725,11 @@ export class UI {
           <ul class="help-ul">
             <li><b>台钓</b>：调好钓深（滚轮）→ 抛竿 → 等<b>漂相</b>。顶漂/顿口/黑漂/走漂都是真口，窗口只有约 1 秒；漂轻微抖动多是小白条闹窝。蚯蚓钓黄颡鲫鱼，玉米钓鲤草，拉饵钓浅可上鲢鳙。</li>
             <li><b>路亚</b>：拟饵决定水层与对象鱼。翘嘴鳡鱼爱快收，鳜鱼鲶鱼要慢拖+空格抽停，黑鱼用雷蛙打水面。攻击窗口极短，看到"一口！"立即左键。</li>
-            <li><b>遛鱼</b>：张力条快满时<b>松开右键放线</b>，鱼不冲时再收。耐力耗尽、距离 2m 内按 F 抄鱼。线断=跑鱼，好线是保命符。</li>
+            <li><b>遛鱼</b>：张力条快满时<b>松开右键放线</b>，鱼不冲时再收。耐力耗尽、距离 2.4m 内按 F 抄鱼。线越粗（拉力 kg 越高）越耐拉，线断=跑鱼，好线是保命符。</li>
             <li><b>渔情</b>：清晨黄昏 ★★★★★，雨前鱼开口；打窝聚鱼提口。<b>四季鱼情</b>：春钓滩（鲫鲤产卵爆发）、夏钓早晚（高温鱼活跃）、秋钓深（黄金季鳊鲂肥）、冬口轻（主钓鲫鳜）。稀有大物需要装备分达标。</li>
             <li><b>集卡</b>：四档按固定概率掉落——<b>橙 1% / 紫 5% / 蓝 30% / 白 64%</b>，同一种鱼四色卡都可能出；钓到重复未破纪录的卡自动分解成<b>鱼珠</b>，鱼珠可在卡册里把心仪的卡<b>合成升档</b>。</li>
             <li><b>装备差异</b>：<b>台钓</b>默认 5.4 米竿配齐竿线 5.8 米（最远抛距≈竿+线，长竿才抛得远）；<b>路亚</b>默认 1.98 米短竿配 30 米线杯（抛距受竿调性与线杯长度共同限制）。切换钓法（1/2）时手持竿会随之更换。</li>
-            <li><b>放流</b>：胭脂鱼、中华鲟是国家保护动物，钓到必须放流，奖励丰厚还有专属橙卡纪念。</li>
+            <li><b>放流</b>：胭脂鱼、中华鲟、长薄鳅是国家保护动物，刀鲚长江禁渔禁捕，钓到都必须放流，奖励丰厚还有专属橙卡纪念。</li>
           </ul>
         </div>
       </div>`;

@@ -2,7 +2,7 @@
 // 经纬度 → 世界坐标：x = (lng-114.30)*640, z = (30.55-lat)*640
 import * as THREE from '../lib/three.module.js';
 import { fbm, smoothstep, rand } from './util.js?v=16';
-import { SPOTS, shorePointFor } from './spots.js?v=16';
+import { SPOTS, shorePointFor } from './spots.js?v=18';
 
 export const WORLD_SIZE = 560;
 

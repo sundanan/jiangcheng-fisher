@@ -1,7 +1,7 @@
 // 天空、昼夜循环、天气系统、雨
 import * as THREE from '../lib/three.module.js';
 import { clamp, lerp, rand, choice } from './util.js?v=16';
-import { periodOf, SEASON_BITE } from './fishData.js?v=16';
+import { periodOf, SEASON_BITE } from './fishData.js?v=17';
 
 // 昼夜颜色关键帧 [小时, 天顶色, 地平线色, 阳光色, 阳光强度, 环境强度, 雾色]
 const SKY_KEYS = [

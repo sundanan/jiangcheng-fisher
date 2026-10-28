@@ -1,5 +1,5 @@
 // 集卡系统：个体评分、四档卡牌（白/蓝/紫/橙）、分解与合成
-import { RARITY } from './fishData.js?v=16';
+import { RARITY } from './fishData.js?v=17';
 import { FishSnapshot } from './fish.js?v=16';
 import { sellPrice } from './tackleData.js?v=16';
 import { lerp, clamp } from './util.js?v=16';

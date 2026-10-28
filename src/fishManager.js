@@ -1,7 +1,7 @@
 // 鱼群管理：按水域/时段维持鱼口种群，游动 AI，进窝咬钩调度，水花特效
 import * as THREE from '../lib/three.module.js';
-import { SPECIES, SPECIES_BY_ID, isSpeciesActive, layerMatch, periodOf, seasonFactor, hourFactor } from './fishData.js?v=16';
-import { spotFactor } from './spots.js?v=16';
+import { SPECIES, SPECIES_BY_ID, isSpeciesActive, layerMatch, periodOf, seasonFactor, hourFactor } from './fishData.js?v=17';
+import { spotFactor } from './spots.js?v=18';
 import { buildFishView, tickFishShaders } from './fish.js?v=16';
 import { rand, randInt, choice, clamp, lerp } from './util.js?v=16';
 
@@ -218,7 +218,7 @@ export class FishManager {
 
   // ===== 咬钩鱼种抽选 =====
   pickFloatSpecies(ctx) {
-    // ctx: {zone, depthRatio, baitId, gearScore, chum, protEnabled}
+    // ctx: {zone, depthRatio, baitId, gearScore, chum, protOK}（protOK=true 时保护鱼种才会入池）
     const hour = this.world.hour;
     const pool = [];
     for (const sp of SPECIES) {

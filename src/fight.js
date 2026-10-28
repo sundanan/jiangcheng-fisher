@@ -14,8 +14,10 @@ export class Fight {
     this.theta = Math.atan2(fw.z, fw.x) + rand(-0.7, 0.7);
     this.stamina = clamp(38 + this.weight * 7 * this.fish.sp.power, 25, 260);
     this.staminaMax = this.stamina;
-    this.tension = 0;               // 0..1（相对线强度的比例）
+    this.tension = 0;               // 0..1（相对线强度的比例：张力增速已按线拉力归一化）
     this.overT = 0;                 // 超限计时
+    // 鱼线拉力接入：以基础 2.4kg 尼龙线为基准，拉力越高张力涨得越慢
+    this.lineFactor = 2.4 / Math.max(0.1, (this.tackle && this.tackle.strength) || 2.4);
     this.surging = false;
     this.surgeT = 0; this.nextSurge = rand(0.6, 1.6);
     this.elapsed = 0;
@@ -72,11 +74,11 @@ export class Fight {
       this.slackT = 0;
       if (this.surging) {
         this.d = Math.max(1.2, this.d - 0.6 * this.tackle.reel * dt);
-        this.tension += (0.42 + this.weight * 0.06 * p) * dt;
+        this.tension += (0.42 + this.weight * 0.06 * p) * this.lineFactor * dt;
       } else {
         const gain = this.tackle.reel * 1.4 * (exhausted ? 2.2 : 1) * this.tackle.rodPower;
         this.d = Math.max(1.2, this.d - gain * dt);
-        this.tension += (0.18 + this.weight * 0.03 * p) * (exhausted ? 0.6 : 1) * dt;
+        this.tension += (0.18 + this.weight * 0.03 * p) * (exhausted ? 0.6 : 1) * this.lineFactor * dt;
       }
       this.stamina -= 4.5 * dt;
     } else {
@@ -122,7 +124,7 @@ export class Fight {
       this.jumpT -= dt;
       const jk = 1 - this.jumpT / 0.8;
       fy = Math.sin(jk * Math.PI) * 1.2;
-      if (this.jumpT <= 0) { this.fishMan.splash(fp, 1.4); this.tension = Math.min(this.tension + 0.12, 1.3); }
+      if (this.jumpT <= 0) { this.fishMan.splash(fp, 1.4); this.tension = Math.min(this.tension + 0.12 * this.lineFactor, 1.3); }
     }
     this.fish.view.position.set(fp.x, fy, fp.z);
     this.fish.view.rotation.y = -this.theta + Math.PI / 2;

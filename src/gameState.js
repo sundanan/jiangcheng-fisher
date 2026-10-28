@@ -26,7 +26,12 @@ export class GameState {
       achv: [],                // 已达成成就 id
       groupsClaimed: [],
       stats: { catches: 0, released: 0, monsters: 0, earned: 0, snapped: 0, misses: 0 },
+      bag: [],                 // 渔护（本局渔获）：{sp, weight, len, value, img, big}
     };
+  }
+  newGame() {
+    this.data = this._fresh();
+    this.save();
   }
   load() {
     try {

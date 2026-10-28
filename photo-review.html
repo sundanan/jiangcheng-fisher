@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>鱼种照片对照核验 · 江城钓客</title>
+<style>
+  body { background: #101923; color: #eaf4fc; font: 14px/1.6 system-ui, sans-serif; padding: 24px; }
+  h1 { font-size: 22px; } h2 { font-size: 17px; margin-top: 28px; color: #f0c060; }
+  .note { color: #9aabba; max-width: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; }
+  .card { background: #16212e; border: 1px solid #2e4256; border-radius: 10px; padding: 10px; }
+  .card.bing { border-color: #d4604a; }
+  .card img { width: 100%; height: 120px; object-fit: contain; background: #0c141d; border-radius: 6px; }
+  .name { font-weight: 700; margin-top: 6px; }
+  .latin { color: #9aabba; font-size: 12px; font-style: italic; }
+  .src { font-size: 11px; margin-top: 4px; }
+  .src.b { color: #f0907a; } .src.w { color: #8fc98f; }
+  .desc { color: #7a8a98; font-size: 11px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>鱼种照片对照核验（57 种）</h1>
+<p class="note">红框 = Bing 搜图来源（8 张，取搜索前 3 结果之一、未经内容校验，<b>重点目验</b>）；绿标 = 维基百科来源（条目主图，可信度较高）。请对照中文名/学名/识别要点检查照片是否为该种。</p>
+<div id="app"></div>
+<script type="module">
+import { SPECIES } from './src/fishData.js?v=17';
+const BING = new Set(['qingyu', 'caoyu', 'lian', 'yong', 'li', 'wuqie', 'yingu', 'nijiantou']);
+const app = document.getElementById('app');
+for (const [title, filter] of [['⚠️ 重点复核（Bing 来源）', (s) => BING.has(s.id)], ['维基来源（抽查即可）', (s) => !BING.has(s.id)]]) {
+  const h = document.createElement('h2'); h.textContent = title; app.appendChild(h);
+  const grid = document.createElement('div'); grid.className = 'grid'; app.appendChild(grid);
+  for (const sp of SPECIES.filter(filter)) {
+    const c = document.createElement('div');
+    c.className = 'card' + (BING.has(sp.id) ? ' bing' : '');
+    c.innerHTML = `<img src="./lib/photos/${sp.id}.jpg" loading="lazy" alt="${sp.name}">
+      <div class="name">${sp.name}</div><div class="latin">${sp.latin}</div>
+      <div class="src ${BING.has(sp.id) ? 'b' : 'w'}">${BING.has(sp.id) ? 'Bing 搜图' : '维基百科'}</div>
+      <div class="desc">${sp.desc}</div>`;
+    grid.appendChild(c);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,23 +1,23 @@
 // 主程序：装配各系统并驱动游戏循环
 import * as THREE from '../lib/three.module.js';
 import { Input } from './input.js?v=16';
-import { GameState } from './gameState.js?v=16';
+import { GameState } from './gameState.js?v=17';
 import { World, WEATHERS } from './world.js?v=16';
 import { Terrain } from './terrain.js?v=18';
 import { Water } from './water.js?v=16';
 import { FishManager } from './fishManager.js?v=16';
 import { Player } from './player.js?v=22';
 import { Caster } from './casting.js?v=16';
-import { FloatSession } from './floatFishing.js?v=16';
+import { FloatSession } from './floatFishing.js?v=17';
 import { LureSession } from './lureFishing.js?v=16';
-import { Fight } from './fight.js?v=16';
+import { Fight } from './fight.js?v=17';
 import { Cards } from './cards.js?v=16';
-import { UI } from './ui.js?v=18';
+import { UI } from './ui.js?v=20';
 import { AudioSys } from './audio.js?v=16';
-import { SPECIES_BY_ID, GROUPS, speciesByGroup, SEASON_INFO } from './fishData.js?v=16';
+import { SPECIES_BY_ID, GROUPS, speciesByGroup, SEASON_INFO } from './fishData.js?v=17';
 import { RODS, LURE_RODS, LINES, REELS, LURE_REELS, FLOATS, BAITS, LURES, CHUM } from './tackleData.js?v=16';
 import { GRADES, SALVAGE, UPGRADE_COST } from './cards.js?v=16';
-import { SPOTS, spotAt, shorePointFor } from './spots.js?v=16';
+import { SPOTS, spotAt, shorePointFor } from './spots.js?v=18';
 import { clamp, rand, fmtKg } from './util.js?v=16';
 
 // ===== 渲染基础 =====
@@ -109,8 +109,18 @@ const S = {
 const controller = {
   state, cards, bag: S.bag,
   hasSave: () => state.hasSave,
-  startGame: (cont) => {
+  // 面板打开时是否有进行中的作钓（用于面板顶部"已暂停"提示）
+  fishingActive: () => S.phase !== 'idle' && S.phase !== 'title' && S.phase !== 'catch',
+  startGame: async (cont) => {
     if (cont) state.load();
+    else if (state.hasSave) {
+      const ok = await ui.confirmBox('已有旧存档。开始<b>新游戏</b>将覆盖旧档（金钱、图鉴、卡册、渔护全部重置），确定吗？');
+      if (!ok) return;
+      state.newGame();
+    }
+    // 渔护与存档共用一个数组（load/newGame 后需重新绑定）
+    S.bag = state.data.bag;
+    controller.bag = S.bag;
     audio.init(); // 用户手势内激活音频
     ui.showHUD(true);
     S.phase = 'idle';
@@ -149,20 +159,37 @@ const controller = {
     ui.toast(`集齐「${g.name}」！奖励 ${g.reward} 元已到账`, 'good');
     ui.renderPanel();
   },
-  sellBag: () => {
+  sellBag: async () => {
     const total = S.bag.reduce((s, c) => s + c.value, 0);
+    const ok = await ui.confirmBox(`全部出售 <b>${S.bag.length}</b> 尾渔获，合计 <b>¥${total}</b>，确定吗？`);
+    if (!ok) return;
     state.earn(total);
     S.bag.length = 0;
+    state.save();
     audio.coin();
     ui.toast(`渔获全部售出 +${total} 元`, 'good');
     ui.renderPanel();
   },
-  clearBag: () => { S.bag.length = 0; ui.toast('全部放回江湖', 'info'); ui.renderPanel(); },
-  salvage: (spId) => {
+  clearBag: async () => {
+    const ok = await ui.confirmBox(`放生全部 <b>${S.bag.length}</b> 尾渔获（无收益、不计放流奖励），确定吗？`);
+    if (!ok) return;
+    S.bag.length = 0;
+    state.save();
+    ui.toast('全部放回江湖', 'info');
+    ui.renderPanel();
+  },
+  salvage: async (spId) => {
     const a = state.data.album[spId];
     if (!a) return;
     const g = Math.min(a.g, 4);
     const gain = SALVAGE[g] || 1;
+    // 白卡分解=删除卡册条目，高阶卡分解=降档，均需确认
+    if (g <= 1 || g >= 3) {
+      const ok = await ui.confirmBox(g <= 1
+        ? `分解将<b>清空「${SPECIES_BY_ID[spId].name}」的卡册条目</b>，获得 ${gain}💠 鱼珠，确定吗？`
+        : `分解将使「${SPECIES_BY_ID[spId].name}」的${GRADES[g].name}卡<b>降一档</b>，获得 ${gain}💠 鱼珠，确定吗？`);
+      if (!ok) return;
+    }
     if (g <= 1) delete state.data.album[spId];
     else a.g = g - 1;
     state.addShards(gain);
@@ -201,6 +228,7 @@ const controller = {
     const spot = SPOTS.find((s) => s.id === spotId);
     if (!spot) return;
     if (S.phase !== 'idle' && S.phase !== 'floatWait' && S.phase !== 'lureWait') { ui.toast('先收竿再出发（R）', 'bad'); return; }
+    const wasFishing = S.phase !== 'idle';
     resetSessions();
     const p = shorePointFor(spot, terrain);
     player.pos.set(p.x, p.y, p.z);
@@ -210,6 +238,7 @@ const controller = {
     audio.splash(0.6);
     ui.closePanel();
     ui.toast(`${spot.icon} 已到达 ${spot.name}——${spot.tip}`, 'good');
+    if (wasFishing) ui.toast('已自动收竿，本次作钓结束', 'info');
   },
 };
 const ui = new UI(document.getElementById('ui-root'), controller);
@@ -439,6 +468,14 @@ async function syncWuhan() {
   } catch (e) { /* 网络不可用则维持游戏内天气机 */ }
 }
 syncWuhan();
+// 启动数据校验：钓点权重引用的鱼种必须存在于鱼种库
+for (const s of SPOTS) {
+  for (const k of Object.keys(s.weights)) {
+    if (k !== 'default' && !SPECIES_BY_ID[k]) console.warn(`[数据校验] 钓点 ${s.id} 引用了不存在的鱼种 ID：${k}`);
+  }
+}
+// 离开/刷新页面时兜底保存（渔护、金钱等均已入档）
+addEventListener('pagehide', () => { if (S.phase !== 'title') state.save(); });
 // ===== 主循环 =====
 const clock = new THREE.Clock();
 let t = 0;
@@ -470,10 +507,16 @@ function frame() {
   const playing = !panelOpen && !catchOpen;
   const locked = input.locked;
   const reelingNow = input.isDown('RMB') && !panelOpen && !catchOpen && (S.phase === 'fight' || S.phase === 'lureWait');
+  const eq = state.data.equipped;
+  const st = rodStats();
 
-  // 玩家更新（视角总是允许；移动仅 idle）
+  // 玩家更新（视角总是允许；移动仅 idle 或船上作钓时——后者不得划离漂/饵超过线长）
   player.setFishingState(S.phase, reelingNow);
-  player.update(dt, input, playing && (S.phase === 'idle' || (player.onBoat && (S.phase === 'floatWait' || S.phase === 'lureWait'))));
+  const anchor = S.phase === 'floatWait' && floatS.active ? floatS.pos
+    : S.phase === 'lureWait' && lureS.active ? lureS.pos : null;
+  let allowMove = playing && (S.phase === 'idle' || (player.onBoat && !!anchor));
+  if (allowMove && anchor && Math.hypot(player.pos.x - anchor.x, player.pos.z - anchor.z) > st.lineLen + 1.5) allowMove = false;
+  player.update(dt, input, allowMove);
   player.rodTipWorld(_tip);
   // Q/E 左右转向（持续按住）
   if (playing) {
@@ -492,7 +535,7 @@ function frame() {
     else if (input.justDown('KeyM') && S.phase !== 'title') ui.toggle('map');
     else if (input.justDown('KeyB')) ui.toggle('shop');
     else if (input.justDown('KeyC')) ui.toggle('album');
-    else if (input.justDown('KeyA')) ui.toggle('achv');
+    else if (input.justDown('KeyJ')) ui.toggle('achv');
     else if (input.justDown('KeyN')) ui.toggle('bag');
     else if (input.justDown('KeyH')) ui.toggle('help');
     else if (input.justDown('KeyV') && S.phase !== 'title') {
@@ -503,7 +546,7 @@ function frame() {
       ui.toast(player.view === 'third' ? '\u7b2c\u4e09\u4eba\u79f0\u89c6\u89d2' : '\u7b2c\u4e00\u4eba\u79f0\u89c6\u89d2', 'info');
     }
 
-    if (input.justDown('KeyT') && (S.phase === 'idle' || S.phase === 'floatWait' || S.phase === 'lureWait')) {
+    if (input.justDown('KeyT') && S.phase === 'idle') {
       const r = player.toggleBoat();
       if (r === 'on') ui.toast('上船！WASD 划到水里任意位置下竿', 'good');
       else if (r === 'off') ui.toast('已靠岸下船', 'info');
@@ -572,12 +615,18 @@ function frame() {
       }
     }
   } else if (panelOpen) {
-    if (input.justDown('Escape') || input.justDown('Tab') || input.justDown('KeyM') || input.justDown('KeyB') || input.justDown('KeyC') || input.justDown('KeyA') || input.justDown('KeyN') || input.justDown('KeyH')) ui.closePanel();
+    // 面板内：Esc 或同键关闭，按其他面板键直接切换
+    const pk = input.justDown('Tab') ? 'dex' : input.justDown('KeyM') ? 'map'
+      : input.justDown('KeyB') ? 'shop' : input.justDown('KeyC') ? 'album'
+      : input.justDown('KeyJ') ? 'achv' : input.justDown('KeyN') ? 'bag'
+      : input.justDown('KeyH') ? 'help' : null;
+    if (input.justDown('Escape')) ui.closePanel();
+    else if (pk) { if (ui.panel === pk) ui.closePanel(); else ui.openPanel(pk); }
   }
 
   // ===== 会话更新 =====
-  const eq = state.data.equipped;
-  const st = rodStats();
+  // 面板打开时作钓会话整体暂停（等口/刺鱼窗口/遛鱼计时冻结），环境动画继续
+  const sessionPaused = panelOpen;
   const waveAmp = world.waveAmp;
 
   // 天气 → 雨声
@@ -594,7 +643,7 @@ function frame() {
   if (S.phase === 'flying') {
     caster.update(dt, t, _tip, waveAmp);
   }
-  if (S.phase === 'floatWait' && floatS.active) {
+  if (S.phase === 'floatWait' && floatS.active && !sessionPaused) {
     const zone = terrain.zoneAt(floatS.pos.x, floatS.pos.z);
     floatS.update(dt, t, {
       zone,
@@ -603,10 +652,11 @@ function frame() {
       gearScore: st.score,
       spot: spotAt(floatS.pos.x, floatS.pos.z),
       chum: inChumZone(floatS.pos),
+      protOK: true,
       biteRate: world.biteFactor * (inChumZone(floatS.pos) ? 1.5 : 1),
     }, _tip, waveAmp);
   }
-  if (S.phase === 'lureWait' && lureS.active) {
+  if (S.phase === 'lureWait' && lureS.active && !sessionPaused) {
     lureS.update(dt, t, {
       reeling: input.isDown('RMB') && !panelOpen && !catchOpen,
       twitch: input.justDown('Space') && !panelOpen,
@@ -617,7 +667,7 @@ function frame() {
     }, _tip, waveAmp);
     if (lureS.state === 'done') { lureS.end(); S.phase = 'idle'; }
   }
-  if (S.phase === 'fight' && S.fight) {
+  if (S.phase === 'fight' && S.fight && !sessionPaused) {
     S.fight.update(dt, input.isDown('RMB') && !panelOpen && !catchOpen);
   }
 
@@ -683,7 +733,8 @@ function cycleBait(dirn) {
 }
 
 function updatePrompt() {
-  let key = S.phase + '|' + (S.mode || '') + '|' + (state.data.baits[state.data.equipped.bait] > 0);
+  let key = S.phase + '|' + (S.mode || '') + '|' + (state.data.baits[state.data.equipped.bait] > 0)
+    + '|' + (S.phase === 'lureWait' ? lureS.speedIdx : '');
   let html = '';
   if (S.phase === 'idle') {
     if (S.mode === 'float') {

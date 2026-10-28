@@ -121,7 +121,7 @@ export class FloatSession {
       this.noBiteT += dt;
       if (!this.noBiteHinted && this.noBiteT > 22) {
         this.noBiteHinted = true;
-        this.onHint('这个钓深和时段没什么口——滚轮调漂 / Q E 换饵试试');
+        this.onHint('这个钓深和时段没什么口——滚轮调漂 / Z X 换饵试试');
       }
       if (this.biteTick <= 0 && !this.pending) {
         this.biteTick = rand(1.6, 3.2);
